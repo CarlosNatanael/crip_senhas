@@ -4,6 +4,31 @@ import random
 import string
 import os
 from cryptography.fernet import Fernet
+from PIL import Image, ImageTk
+
+
+tema_claro = {
+    "bg": "#f0f0f0",
+    "fg": "#000000",
+    "entry_bg": "#ffffff",
+    "entry_fg": "#000000",
+    "btn_bg": "#e0e0e0",
+    "btn_fg": "#000000",
+    "btn_hover": "#d0d0d0"
+}
+
+tema_escuro = {
+    "bg": "#2b2b2b",
+    "fg": "#ffffff",
+    "entry_bg": "#353535",
+    "entry_fg": "#ffffff",
+    "btn_bg": "#3c3f41",
+    "btn_fg": "#ffffff",
+    "btn_hover": "#4b4f51"
+}
+
+tema_atual = tema_escuro
+widgets_estilizados = []
 
 # Gera chave crytografada
 def gerar_chave():
@@ -120,6 +145,7 @@ def mostrar_dados_salvos():
     frame_busca.pack(pady=5)
 
     tk.Label(frame_busca, text="Buscar Serviço:", font=("Arial", 10)).pack(side="left")
+    tk.Label(janela_dados, text="(A busca é automática enquanto digita)", font=("Arial", 9, "italic")).pack(pady=10)
     entrada_busca = tk.Entry(frame_busca, width=30)
     entrada_busca.pack(side="left", padx=5)
 
@@ -178,36 +204,88 @@ def atualizar_senha():
     campo_senha.delete(0, tk.END)
     campo_senha.insert(0, nova)
 
+def alternar_tema():
+    global tema_atual, modo_escuro
+    modo_escuro = not modo_escuro
+    tema_atual = tema_escuro if modo_escuro else tema_claro
+    aplicar_tema()
+
+    novo_icone = icone_lua if modo_escuro else icone_sol
+    botao_tema.config(image=novo_icone, bg='white' if not modo_escuro else '#2e2e2e',
+                      activebackground='white' if not modo_escuro else '#2e2e2e')
+    botao_tema.image = novo_icone
+
+def aplicar_tema():
+    janela.configure(bg=tema_atual["bg"])
+    for widget in widgets_estilizados:
+        if isinstance(widget, tk.Entry):
+            widget.configure(bg=tema_atual["entry_bg"], fg=tema_atual ["entry_fg"])
+        elif isinstance(widget, tk.Label):
+            widget.configure(bg=tema_atual["bg"], fg=tema_atual["fg"])
+        elif isinstance(widget, tk.Button):
+            widget.configure(bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"], activebackground=tema_atual["btn_hover"])
+
 gerar_chave()
 
-# Cria a janela
 janela = tk.Tk()
 janela.title("Gerenciador de Senhas")
-janela.geometry("420x290")
+janela.geometry("450x300")
+janela.iconbitmap('imagem.ico')
 janela.resizable(False, False)
 
-# Widgets
-tk.Label(janela, text="Serviço:", font=("Arial", 10)).pack(pady=2)
+label1 = tk.Label(janela, text="Serviço:", font=("Arial", 10))
+label1.pack(pady=2)
 entrada_servico = tk.Entry(janela, width=40, font=("Arial", 11))
-entrada_servico.pack() 
+entrada_servico.pack()
 
-tk.Label(janela, text="Usuário:", font=("Arial", 10)).pack(pady=2)
+label2 = tk.Label(janela, text="Usuário:", font=("Arial", 10))
+label2.pack(pady=2)
 entrada_usuario = tk.Entry(janela, width=40, font=("Arial", 11))
 entrada_usuario.pack()
 
-tk.Label(janela, text="Senha:", font=("Arial", 10)).pack(pady=2)
+label3 = tk.Label(janela, text="Senha:", font=("Arial", 10))
+label3.pack(pady=2)
 campo_senha = tk.Entry(janela, width=40, font=("Arial", 11), justify="center")
 campo_senha.pack()
 
-tk.Button(janela, text="Gerar Senha", font=("Arial", 11), command=atualizar_senha).pack(pady=5)
-tk.Button(janela, text="Salvar Senha", font=("Arial", 11), command=lambda: salvar_dados(
-    entrada_servico.get(),
-    entrada_usuario.get(),
-    campo_senha.get()
-)).pack(pady=5)
+botao_gerar = tk.Button(janela, text="Gerar Senha", font=("Arial", 11), command=atualizar_senha)
+botao_gerar.pack(pady=5)
+
+botao_salvar = tk.Button(janela, text="Salvar Senha", font=("Arial", 11), command=lambda: salvar_dados(
+    entrada_servico.get(), entrada_usuario.get(), campo_senha.get()))
+botao_salvar.pack(pady=5)
 
 #tk.Button(janela, text="Definir Senha-Mestra", font=("Arial", 10), command=definir_senha_master).pack(pady=10)
-tk.Button(janela, text="Modo Administrador", font=("Arial", 10), command=autenticador_admin).pack(pady=10)
+botao_admin = tk.Button(janela, text="Modo Administrador", font=("Arial", 10), command=autenticador_admin)
+botao_admin.pack(pady=10)
 
-# Loop
+# botao_tema = tk.Button(janela, text="Alternar Tema", font=("Arial", 10), command=alternar_tema)
+# botao_tema.pack(pady=5)
+
+modo_escuro = tema_atual == tema_escuro
+
+icone_sol_pil = Image.open("imagem_sol.jpg").resize((32, 32))  # Redimensiona
+icone_sol = ImageTk.PhotoImage(icone_sol_pil)
+
+icone_lua_pil = Image.open("imagem_lua.jpg").resize((32, 32))
+icone_lua = ImageTk.PhotoImage(icone_lua_pil)
+icone_atual = icone_sol if not modo_escuro else icone_lua
+
+botao_gerar.pack(pady=5)
+botao_salvar.pack(pady=5)
+botao_admin.pack(pady=5)
+
+botao_tema = tk.Button(janela, image=icone_lua, command=alternar_tema, bd=0, bg="#2d2d2d", activebackground="#2d2d2d")
+botao_tema.pack(pady=5)
+
+widgets_estilizados.extend([
+    label1, entrada_servico,
+    label2, entrada_usuario,
+    label3, campo_senha,
+    botao_gerar, botao_salvar,
+    botao_admin, botao_tema
+])
+
+aplicar_tema()
+
 janela.mainloop()
