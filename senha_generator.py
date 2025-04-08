@@ -28,7 +28,7 @@ def salvar_dados(servico, usuario, senha):
     dados_bytes = dados.encode()
 
     chave = carregar_chave()
-    fernet = fernet(chave)
+    fernet = Fernet(chave)
     dados_criptografados = fernet.encrypt(dados_bytes)
 
     with open("dados_senhas.dat", "ab") as arquivos:
@@ -38,6 +38,91 @@ def salvar_dados(servico, usuario, senha):
     entrada_servico.delete(0, tk.END)
     entrada_usuario.delete(0, tk.END)
     campo_senha.delete(0, tk.END)
+
+def definir_senha_master():
+    def salvar():
+        senha = entrada_senha.get()
+        if not senha:
+            messagebox.showwarning("Aviso", "Digite uma senha-mestra")
+            return
+        
+        chave = carregar_chave()
+        f = Fernet(chave)
+        senha_cripto = f.encrypt(senha.encode())
+
+        with open("Senha_admin.key", "wb") as f_senha:
+            f_senha.write(senha_cripto)
+
+        messagebox.showinfo("Sucesso", "Senha-mestra definida!")
+        janela_definir.destroy()
+
+    janela_definir = tk.Toplevel()
+    janela_definir.title("Definir senha-mestra")
+    janela_definir.geometry("300x150")
+
+    tk.Label(janela_definir, text="Defina uma senha-mestra", font=("Arial", 10)).pack(pady=10)
+    entrada_senha = tk.Entry(janela_definir, show="*", width=30)
+    entrada_senha.pack()
+    tk.Button(janela_definir, text="salvar", command=salvar).pack(pady=10)
+
+def autenticador_admin():
+    def verificar():
+        senha_digitada = entrada.get()
+        try:
+            with open("senha_admin.key", "rb") as arq:
+                senha_cripto = arq.read()
+        except FileNotFoundError:
+            messagebox.showerror("Erro", "Senha-mestre não definida!")
+            janela_login.destroy()
+            return
+        
+        chave = carregar_chave()
+        f = Fernet(chave)
+        try:
+            senha_original = f.decrypt(senha_cripto).decode()
+        except:
+            messagebox.showerror("Erro", "Falha ao decodificar a senha!")
+            return
+        
+        if senha_digitada == senha_original:
+            janela_login.destroy()
+            mostrar_dados_salvos()
+        else:
+            messagebox.showerror("Erro", "Senha incorreta")
+
+    janela_login = tk.Toplevel()
+    janela_login.title("Admin - Autenticação")
+    janela_login.geometry("300x150")
+
+    tk.Label(janela_login, text="Digite a senha-mestra", font=("Arial", 10)).pack(pady=10)
+    entrada = tk.Entry(janela_login, show="*", width=30)
+    entrada.pack()
+    tk.Button(janela_login, text="Entrar", command=verificar).pack(pady=10)
+
+def mostrar_dados_salvos():
+    try:
+        with open("dados_senhas.dat", "rb") as arq:
+            linhas = arq.readlines()
+    except FileNotFoundError:
+        messagebox.showinfo("Nada salvo", "Nenhuma senha salva ainda.")
+        return
+    
+    chave = carregar_chave()
+    f = Fernet(chave)
+
+    janela_dados = tk.Toplevel()
+    janela_dados.title("Senhas Salvas")
+    janela_dados.geometry("500x400")
+
+    texto = tk.Text(janela_dados, wrap="word", font=("Courier", 10))
+    texto.pack(expand=True, fill="both")
+
+    for linha in linhas:
+        try:
+            decrypted = f.decrypt(linha.strip()).decode()
+            texto.insert(tk.END, decrypted + "\n")
+        except:
+            continue
 
 def gerar_senha(tamanho=12):
     caracteres = string.ascii_letters + string.digits + string.punctuation
@@ -54,7 +139,7 @@ gerar_chave()
 # Cria a janela
 janela = tk.Tk()
 janela.title("Gerenciador de Senhas")
-janela.geometry("420x300")
+janela.geometry("420x290")
 janela.resizable(False, False)
 
 # Widgets
@@ -76,6 +161,9 @@ tk.Button(janela, text="Salvar Senha", font=("Arial", 11), command=lambda: salva
     entrada_usuario.get(),
     campo_senha.get()
 )).pack(pady=5)
+
+#tk.Button(janela, text="Definir Senha-Mestra", font=("Arial", 10), command=definir_senha_master).pack(pady=10)
+tk.Button(janela, text="Modo Administrador", font=("Arial", 10), command=autenticador_admin).pack(pady=10)
 
 # Loop
 janela.mainloop()
