@@ -5,7 +5,6 @@ import string
 import os
 from cryptography.fernet import Fernet
 
-
 # Gera chave crytografada
 def gerar_chave():
     if not os.path.exists("chave.key"):
@@ -24,7 +23,7 @@ def salvar_dados(servico, usuario, senha):
         messagebox.showwarning("Campo vazios","Preencha todos os campos!")
         return
     
-    dados = f"Serviço: {servico}\nUsuario: {usuario}\nSenha: {senha}\n\n"
+    dados = f"{servico} | {usuario} | {senha}"
     dados_bytes = dados.encode()
 
     chave = carregar_chave()
@@ -39,6 +38,7 @@ def salvar_dados(servico, usuario, senha):
     entrada_usuario.delete(0, tk.END)
     campo_senha.delete(0, tk.END)
 
+# Salva senha-mestra criptografada
 def definir_senha_master():
     def salvar():
         senha = entrada_senha.get()
@@ -65,6 +65,7 @@ def definir_senha_master():
     entrada_senha.pack()
     tk.Button(janela_definir, text="salvar", command=salvar).pack(pady=10)
 
+# Verifica senha-mestra para acessar dados
 def autenticador_admin():
     def verificar():
         senha_digitada = entrada.get()
@@ -99,6 +100,7 @@ def autenticador_admin():
     entrada.pack()
     tk.Button(janela_login, text="Entrar", command=verificar).pack(pady=10)
 
+# Função para mostrar os dados salvos
 def mostrar_dados_salvos():
     try:
         with open("dados_senhas.dat", "rb") as arq:
@@ -106,23 +108,65 @@ def mostrar_dados_salvos():
     except FileNotFoundError:
         messagebox.showinfo("Nada salvo", "Nenhuma senha salva ainda.")
         return
-    
+
     chave = carregar_chave()
     f = Fernet(chave)
 
     janela_dados = tk.Toplevel()
     janela_dados.title("Senhas Salvas")
-    janela_dados.geometry("500x400")
+    janela_dados.geometry("600x400")
 
-    texto = tk.Text(janela_dados, wrap="word", font=("Courier", 10))
-    texto.pack(expand=True, fill="both")
+    frame_busca = tk.Frame(janela_dados)
+    frame_busca.pack(pady=5)
 
-    for linha in linhas:
-        try:
-            decrypted = f.decrypt(linha.strip()).decode()
-            texto.insert(tk.END, decrypted + "\n")
-        except:
-            continue
+    tk.Label(frame_busca, text="Buscar Serviço:", font=("Arial", 10)).pack(side="left")
+    entrada_busca = tk.Entry(frame_busca, width=30)
+    entrada_busca.pack(side="left", padx=5)
+
+    frame_resultados = tk.Frame(janela_dados)
+    frame_resultados.pack(fill="both", expand=True)
+
+    def atualizar_resultados(filtro=""):
+        for widget in frame_resultados.winfo_children():
+            widget.destroy()
+
+        for idx, linha in enumerate(linhas):
+            try:
+                decrypted = f.decrypt(linha.strip()).decode()
+                if filtro.lower() not in decrypted.lower():
+                    continue
+
+                partes = decrypted.split(" | ")
+                if len(partes) == 3:
+                    servico, usuario, senha = partes
+                    linha_frame = tk.Frame(frame_resultados)
+                    linha_frame.pack(fill="x", padx=5, pady=2)
+
+                    tk.Label(linha_frame, text=f"{servico} - {usuario}", font=("Arial", 10), width=35, anchor="w").pack(side="left")
+                    tk.Button(linha_frame, text="Copiar Senha", command=lambda s=senha: copiar_para_area(s)).pack(side="left", padx=5)
+                    tk.Button(linha_frame, text="Excluir", command=lambda i=idx: excluir_linha(i)).pack(side="left")
+            except:
+                continue
+
+    def copiar_para_area(senha):
+        janela_dados.clipboard_clear()
+        janela_dados.clipboard_append(senha)
+        messagebox.showinfo("Copiado", "Senha copiada para a área de transferência!")
+
+    def excluir_linha(index):
+        confirm = messagebox.askyesno("Confirmação", "Tem certeza que deseja excluir esta entrada?")
+        if confirm:
+            linhas.pop(index)
+            with open("dados_senhas.dat", "wb") as arq:
+                for l in linhas:
+                    arq.write(l)
+            atualizar_resultados(entrada_busca.get())
+
+    entrada_busca.bind("<KeyRelease>", lambda e: atualizar_resultados(entrada_busca.get()))
+    entrada_busca.pack(side="left", padx=5)
+
+
+    atualizar_resultados()
 
 def gerar_senha(tamanho=12):
     caracteres = string.ascii_letters + string.digits + string.punctuation
