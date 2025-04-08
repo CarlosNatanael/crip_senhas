@@ -30,6 +30,8 @@ tema_escuro = {
 tema_atual = tema_escuro
 widgets_estilizados = []
 
+janelas_secundarias = []
+
 # Gera chave crytografada
 def gerar_chave():
     if not os.path.exists("chave.key"):
@@ -84,11 +86,14 @@ def definir_senha_master():
     janela_definir = tk.Toplevel()
     janela_definir.title("Definir senha-mestra")
     janela_definir.geometry("300x150")
+    janelas_secundarias.append(janela_definir)
 
     tk.Label(janela_definir, text="Defina uma senha-mestra", font=("Arial", 10)).pack(pady=10)
     entrada_senha = tk.Entry(janela_definir, show="*", width=30)
     entrada_senha.pack()
     tk.Button(janela_definir, text="salvar", command=salvar).pack(pady=10)
+
+
 
 # Verifica senha-mestra para acessar dados
 def autenticador_admin():
@@ -118,7 +123,10 @@ def autenticador_admin():
 
     janela_login = tk.Toplevel()
     janela_login.title("Admin - Autenticação")
+    janela_login.iconbitmap('img\imagem.ico')
     janela_login.geometry("300x150")
+    janelas_secundarias.append(janela_login)
+
 
     tk.Label(janela_login, text="Digite a senha-mestra", font=("Arial", 10)).pack(pady=10)
     entrada = tk.Entry(janela_login, show="*", width=30)
@@ -127,6 +135,8 @@ def autenticador_admin():
 
 # Função para mostrar os dados salvos
 def mostrar_dados_salvos():
+    if not autenticador_admin():
+        return
     try:
         with open("dados_senhas.dat", "rb") as arq:
             linhas = arq.readlines()
@@ -139,21 +149,50 @@ def mostrar_dados_salvos():
 
     janela_dados = tk.Toplevel()
     janela_dados.title("Senhas Salvas")
+    janela_dados.iconbitmap('img\imagem.ico')
     janela_dados.geometry("600x400")
+    janelas_secundarias.append(janela_dados)
+
 
     frame_busca = tk.Frame(janela_dados)
     frame_busca.pack(pady=5)
 
-    tk.Label(frame_busca, text="Buscar Serviço:", font=("Arial", 10)).pack(side="left")
-    tk.Label(janela_dados, text="(A busca é automática enquanto digita)", font=("Arial", 9, "italic")).pack(pady=10)
-    entrada_busca = tk.Entry(frame_busca, width=30)
-    entrada_busca.pack(side="left", padx=5)
+    lbl_busca = tk.Label(janela_dados, text="Buscar Serviço:", bg=tema_atual["bg"], fg=tema_atual["fg"])
+    lbl_busca.pack(pady=(10, 0))
+    lbl_dica = tk.Label(janela_dados, text="(A busca é automática enquanto digita)", font=("Arial", 8), bg=tema_atual["bg"], fg=tema_atual["fg"])
+    lbl_dica.pack(pady=(0, 10))
+    entrada_busca = tk.Entry(janela_dados, width=40, bg=tema_atual["entry_bg"], fg=tema_atual["entry_fg"])
+    entrada_busca.pack()
 
-    frame_resultados = tk.Frame(janela_dados)
-    frame_resultados.pack(fill="both", expand=True)
+    frame_senhas = tk.Frame(janela_dados, bg=tema_atual["bg"])
+    frame_senhas.pack()
+
+    def exibir_dados():
+        for widget in frame_senhas.winfo_children():
+            widget.destroy()
+        dados = carregar_dados()
+        termo = entrada_busca.get().lower()
+
+        for servico, info in dados.items():
+            if termo in servico.lower():
+                frame_linha = tk.Frame(frame_senhas, bg=tema_atual["bg"])
+                frame_linha.pack(pady=5, fill='x', padx=10)
+
+                texto = f"{servico} - {info['usuario']}"
+                lbl = tk.Label(frame_linha, text=texto, bg=tema_atual["bg"], fg=tema_atual["fg"], anchor='w')
+                lbl.pack(side='left', padx=5)
+
+                btn_copiar = tk.Button(frame_linha, text="Copiar Senha", bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"], activebackground=tema_atual["btn_hover"], command=lambda s=info['senha']: copiar_senha(s))
+                btn_copiar.pack(side='right', padx=5)
+
+                btn_excluir = tk.Button(frame_linha, text="Excluir", bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"], activebackground=tema_atual["btn_hover"], command=lambda s=servico: excluir_entrada(s, exibir_dados))
+                btn_excluir.pack(side='right')
+
+    entrada_busca.bind("<KeyRelease>", lambda e: exibir_dados())
+    exibir_dados()
 
     def atualizar_resultados(filtro=""):
-        for widget in frame_resultados.winfo_children():
+        for widget in frame_senhas.winfo_children():
             widget.destroy()
 
         for idx, linha in enumerate(linhas):
@@ -165,7 +204,7 @@ def mostrar_dados_salvos():
                 partes = decrypted.split(" | ")
                 if len(partes) == 3:
                     servico, usuario, senha = partes
-                    linha_frame = tk.Frame(frame_resultados)
+                    linha_frame = tk.Frame(frame_senhas)
                     linha_frame.pack(fill="x", padx=5, pady=2)
 
                     tk.Label(linha_frame, text=f"{servico} - {usuario}", font=("Arial", 10), width=35, anchor="w").pack(side="left")
@@ -191,7 +230,6 @@ def mostrar_dados_salvos():
     entrada_busca.bind("<KeyRelease>", lambda e: atualizar_resultados(entrada_busca.get()))
     entrada_busca.pack(side="left", padx=5)
 
-
     atualizar_resultados()
 
 def gerar_senha(tamanho=12):
@@ -216,21 +254,37 @@ def alternar_tema():
     botao_tema.image = novo_icone
 
 def aplicar_tema():
+    # Aplica tema na janela principal
     janela.configure(bg=tema_atual["bg"])
     for widget in widgets_estilizados:
         if isinstance(widget, tk.Entry):
-            widget.configure(bg=tema_atual["entry_bg"], fg=tema_atual ["entry_fg"])
+            widget.configure(bg=tema_atual["entry_bg"], fg=tema_atual["entry_fg"])
         elif isinstance(widget, tk.Label):
             widget.configure(bg=tema_atual["bg"], fg=tema_atual["fg"])
         elif isinstance(widget, tk.Button):
             widget.configure(bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"], activebackground=tema_atual["btn_hover"])
+
+    # Aplica tema em cada janela secundária
+    for janela_sec in janelas_secundarias:
+        try:
+            janela_sec.configure(bg=tema_atual["bg"])
+            for widget in janela_sec.winfo_children():
+                if isinstance(widget, tk.Entry):
+                    widget.configure(bg=tema_atual["entry_bg"], fg=tema_atual["entry_fg"])
+                elif isinstance(widget, tk.Label):
+                    widget.configure(bg=tema_atual["bg"], fg=tema_atual["fg"])
+                elif isinstance(widget, tk.Button):
+                    widget.configure(bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"], activebackground=tema_atual["btn_hover"])
+        except:
+            pass  # Evita erro se a janela foi fechada
+
 
 gerar_chave()
 
 janela = tk.Tk()
 janela.title("Gerenciador de Senhas")
 janela.geometry("450x300")
-janela.iconbitmap('imagem.ico')
+janela.iconbitmap('img\imagem.ico')
 janela.resizable(False, False)
 
 label1 = tk.Label(janela, text="Serviço:", font=("Arial", 10))
@@ -264,10 +318,10 @@ botao_admin.pack(pady=10)
 
 modo_escuro = tema_atual == tema_escuro
 
-icone_sol_pil = Image.open("imagem_sol.jpg").resize((32, 32))  # Redimensiona
+icone_sol_pil = Image.open("img\imagem_sol.jpg").resize((32, 32))  # Redimensiona
 icone_sol = ImageTk.PhotoImage(icone_sol_pil)
 
-icone_lua_pil = Image.open("imagem_lua.jpg").resize((32, 32))
+icone_lua_pil = Image.open("img\imagem_lua.jpg").resize((32, 32))
 icone_lua = ImageTk.PhotoImage(icone_lua_pil)
 icone_atual = icone_sol if not modo_escuro else icone_lua
 
