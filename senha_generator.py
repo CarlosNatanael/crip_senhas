@@ -6,7 +6,7 @@ import os
 from cryptography.fernet import Fernet
 from PIL import Image, ImageTk
 
-
+# ============ Temas modo claro/escuro ============
 tema_claro = {
     "bg": "#f0f0f0",
     "fg": "#000000",
@@ -29,7 +29,6 @@ tema_escuro = {
 
 tema_atual = tema_escuro
 widgets_estilizados = []
-
 janelas_secundarias = []
 
 # Gera chave crytografada
@@ -153,6 +152,7 @@ def mostrar_dados_salvos():
     frame_senhas = tk.Frame(janela_dados, bg=tema_atual["bg"])
     frame_senhas.pack(fill='both', expand=True, padx=10, pady=10)
 
+    # Função que carrega as senhas
     def carregar_dados():
         dados = {}
         try:
@@ -173,6 +173,7 @@ def mostrar_dados_salvos():
             pass
         return dados      
 
+    # Função que exibe os Usuários e Serviço
     def exibir_dados(filtro=""):
         for widget in frame_senhas.winfo_children():
             widget.destroy()
@@ -210,11 +211,13 @@ def mostrar_dados_salvos():
                                   command=lambda s=servico: excluir_entrada(s))
             btn_excluir.pack(side='right')
 
+    # Função que copía a senha e cola na área de trabalho
     def copiar_senha(senha):
         janela_dados.clipboard_clear()
         janela_dados.clipboard_append(senha)
         messagebox.showinfo("Copiado", "Senha copiada para a área de transferência!")
 
+    # Função que exclui os dados salvos
     def excluir_entrada(servico):
         confirm = messagebox.askyesno("Confirmação", f"Tem certeza que deseja excluir a entrada para {servico}?")
         if confirm:
@@ -244,16 +247,19 @@ def mostrar_dados_salvos():
     entrada_busca.bind("<KeyRelease>", lambda e: exibir_dados(entrada_busca.get()))
     exibir_dados()
 
+# Função que gera a senha de até 12 digitos
 def gerar_senha(tamanho=12):
     caracteres = string.ascii_letters + string.digits + string.punctuation
     senha = ''.join(random.choice(caracteres) for _ in range(tamanho))
     return senha
 
+# Função que atualisa as senha
 def atualizar_senha():
     nova = gerar_senha()
     campo_senha.delete(0, tk.END)
     campo_senha.insert(0, nova)
 
+# Altera entre o modo claro/escuro
 def alternar_tema():
     global tema_atual, modo_escuro
     modo_escuro = not modo_escuro
@@ -265,6 +271,7 @@ def alternar_tema():
                       activebackground='white' if not modo_escuro else '#2e2e2e')
     botao_tema.image = novo_icone
 
+# Função que aplica o tema nas janelas principais e secundarias 
 def aplicar_tema():
     # Aplica tema na janela principal
     janela.configure(bg=tema_atual["bg"])
