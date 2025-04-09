@@ -1,4 +1,3 @@
-# Conteúdo do README.md
 # 🔐 Gerenciador de Senhas - Versão 1.0
 
 Este é um aplicativo de **gerenciamento de senhas** desenvolvido em **Python com Tkinter**, focado em simplicidade, segurança e personalização.
