@@ -92,8 +92,6 @@ def definir_senha_master():
     entrada_senha.pack()
     tk.Button(janela_definir, text="salvar", command=salvar).pack(pady=10)
 
-
-
 # Verifica senha-mestra para acessar dados
 def autenticador_admin():
     def verificar():
@@ -297,7 +295,6 @@ def aplicar_tema():
                     widget.configure(bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"], activebackground=tema_atual["btn_hover"])
         except:
             pass  # Evita erro se a janela foi fechada
-
 
 gerar_chave()
 
