@@ -1,4 +1,4 @@
 @echo off
 cd /d "%~dp0"
-start /min pythonw senha_generator.py
+start /min py senha_generator.py
 exit
