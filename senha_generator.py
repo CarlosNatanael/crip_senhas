@@ -1,52 +1,60 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
 import random
 import string
 import os
 from cryptography.fernet import Fernet
 from PIL import Image, ImageTk
 
-# ============ Temas modo claro/escuro ============
+# ============ Configurações de Tema ============
 tema_claro = {
-    "bg": "#f0f0f0",
-    "fg": "#000000",
+    "bg": "#f5f5f5",
+    "fg": "#333333",
     "entry_bg": "#ffffff",
     "entry_fg": "#000000",
-    "btn_bg": "#e0e0e0",
-    "btn_fg": "#000000",
-    "btn_hover": "#d0d0d0"
+    "btn_bg": "#2b83a1",
+    "btn_fg": "#ffffff",
+    "btn_hover": "#0b495e",
+    "frame_bg": "#e0e0e0",
+    "highlight": "#2196F3"
 }
 
 tema_escuro = {
     "bg": "#2b2b2b",
-    "fg": "#ffffff",
-    "entry_bg": "#353535",
+    "fg": "#e0e0e0",
+    "entry_bg": "#424242",
     "entry_fg": "#ffffff",
-    "btn_bg": "#3c3f41",
+    "btn_bg": "#2b83a1",
     "btn_fg": "#ffffff",
-    "btn_hover": "#4b4f51"
+    "btn_hover": "#0b495e",
+    "frame_bg": "#424242",
+    "highlight": "#0D47A1"
 }
 
 tema_atual = tema_escuro
+modo_escuro = True
 widgets_estilizados = []
 janelas_secundarias = []
 
-# Gera chave crytografada
+# ============ Funções de Criptografia ============
 def gerar_chave():
     if not os.path.exists("chave.key"):
         chave = Fernet.generate_key()
         with open("chave.key","wb") as chave_arquivo:
             chave_arquivo.write(chave)
 
-# Carrega as chaves criptografada
 def carregar_chave():
     with open("chave.key","rb") as chave_arquivo:
         return chave_arquivo.read()
+
+# ============ Funções Principais ============
+def salvar_dados():
+    servico = entrada_servico.get()
+    usuario = entrada_usuario.get()
+    senha = campo_senha.get()
     
-# Criptografa os dados salvos
-def salvar_dados(servico, usuario, senha):
     if not servico or not usuario or not senha:
-        messagebox.showwarning("Campo vazios","Preencha todos os campos!")
+        messagebox.showwarning("Campos Vazios", "Preencha todos os campos!")
         return
     
     dados = f"{servico} | {usuario} | {senha}"
@@ -59,19 +67,24 @@ def salvar_dados(servico, usuario, senha):
     with open("dados_senhas.dat", "ab") as arquivos:
         arquivos.write(dados_criptografados + b"\n")
 
-    messagebox.showinfo("Sucesso","Senha salva com sucesso")
+    messagebox.showinfo("Sucesso", "Senha salva com sucesso!")
     entrada_servico.delete(0, tk.END)
     entrada_usuario.delete(0, tk.END)
     campo_senha.delete(0, tk.END)
 
-# Salva senha-mestra criptografada
 def definir_senha_master():
     def salvar():
         senha = entrada_senha.get()
-        if not senha:
-            messagebox.showwarning("Aviso", "Digite uma senha-mestra")
-            return
+        confirmacao = entrada_confirmacao.get()
         
+        if not senha or not confirmacao:
+            messagebox.showwarning("Aviso", "Preencha ambos os campos!")
+            return
+            
+        if senha != confirmacao:
+            messagebox.showwarning("Aviso", "As senhas não coincidem!")
+            return
+            
         chave = carregar_chave()
         f = Fernet(chave)
         senha_cripto = f.encrypt(senha.encode())
@@ -79,21 +92,42 @@ def definir_senha_master():
         with open("senha_admin.key", "wb") as f_senha:
             f_senha.write(senha_cripto)
 
-        messagebox.showinfo("Sucesso", "Senha-mestra definida!")
+        messagebox.showinfo("Sucesso", "Senha-mestra definida com sucesso!")
         janela_definir.destroy()
 
     janela_definir = tk.Toplevel()
-    janela_definir.title("Definir senha-mestra")
-    janela_definir.geometry("300x150")
+    janela_definir.title("Definir Senha-Mestra")
+    janela_definir.geometry("350x200")
+    janela_definir.iconbitmap('icone.ico')
+    janela_definir.resizable(False, False)
     janelas_secundarias.append(janela_definir)
+    
+    frame = tk.Frame(janela_definir, bg=tema_atual["frame_bg"], padx=20, pady=20)
+    frame.pack(fill="both", expand=True)
+    
+    tk.Label(frame, text="Defina sua senha-mestra", font=("Arial", 12, "bold"), 
+             bg=tema_atual["frame_bg"], fg=tema_atual["fg"]).pack(pady=(0, 10))
+    
+    tk.Label(frame, text="Nova Senha:", bg=tema_atual["frame_bg"], fg=tema_atual["fg"]).pack(anchor="w")
+    entrada_senha = tk.Entry(frame, show="*", width=30, bg=tema_atual["entry_bg"], fg=tema_atual["entry_fg"])
+    entrada_senha.pack(pady=(0, 10))
+    
+    tk.Label(frame, text="Confirme a Senha:", bg=tema_atual["frame_bg"], fg=tema_atual["fg"]).pack(anchor="w")
+    entrada_confirmacao = tk.Entry(frame, show="*", width=30, bg=tema_atual["entry_bg"], fg=tema_atual["entry_fg"])
+    entrada_confirmacao.pack(pady=(0, 15))
+    
+    btn_salvar = tk.Button(frame, text="Salvar", command=salvar, bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"],
+                          activebackground=tema_atual["btn_hover"], width=15)
+    btn_salvar.pack()
+    
+    aplicar_tema()
 
-    tk.Label(janela_definir, text="Defina uma senha-mestra", font=("Arial", 10)).pack(pady=10)
-    entrada_senha = tk.Entry(janela_definir, show="*", width=30)
-    entrada_senha.pack()
-    tk.Button(janela_definir, text="salvar", command=salvar).pack(pady=10)
-
-# Verifica senha-mestra para acessar dados
 def autenticador_admin():
+    if not os.path.exists("senha_admin.key"):
+        messagebox.showinfo("Senha Master", "Você precisa definir uma senha master primeiro.")
+        definir_senha_master()
+        return
+    
     def verificar():
         senha_digitada = entrada.get()
         try:
@@ -116,42 +150,131 @@ def autenticador_admin():
             janela_login.destroy()
             mostrar_dados_salvos()
         else:
-            messagebox.showerror("Erro", "Senha incorreta")
+            messagebox.showerror("Erro", "Senha incorreta!")
+            entrada.delete(0, tk.END)
 
     janela_login = tk.Toplevel()
-    janela_login.title("Admin - Autenticação")
-    janela_login.iconbitmap('img\imagem.ico')
-    janela_login.geometry("300x150")
+    janela_login.title("Autenticação Admin")
+    janela_login.geometry("350x200")
+    janela_login.iconbitmap('icone.ico')
+    janela_login.resizable(False, False)
     janelas_secundarias.append(janela_login)
+    
+    frame = tk.Frame(janela_login, bg=tema_atual["frame_bg"], padx=20, pady=20)
+    frame.pack(fill="both", expand=True)
+    
+    tk.Label(frame, text="Autenticação Administrativa", font=("Arial", 12, "bold"), 
+             bg=tema_atual["frame_bg"], fg=tema_atual["fg"]).pack(pady=(0, 15))
+    
+    tk.Label(frame, text="Digite a senha-mestra:", bg=tema_atual["frame_bg"], fg=tema_atual["fg"]).pack(anchor="w")
+    entrada = tk.Entry(frame, show="*", width=30, bg=tema_atual["entry_bg"], fg=tema_atual["entry_fg"])
+    entrada.pack(pady=(0, 20))
+    
+    btn_entrar = tk.Button(frame, text="Entrar", command=verificar, bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"],
+                          activebackground=tema_atual["btn_hover"], width=15)
+    btn_entrar.pack()
+    
+    aplicar_tema()
 
+def aplicar_tema_janela_dados(janela):
+    for widget in janela.winfo_children():
+        if isinstance(widget, tk.Frame):
+            widget.config(bg=tema_atual["bg"] if widget.winfo_name().startswith("!frame") else tema_atual["frame_bg"])
+            for child in widget.winfo_children():
+                aplicar_tema_janela_dados(child)
+        elif isinstance(widget, tk.Label):
+            widget.config(bg=tema_atual["frame_bg"] if widget.master.winfo_class() == "Frame" else tema_atual["bg"], 
+                          fg=tema_atual["fg"])
+        elif isinstance(widget, tk.Entry):
+            widget.config(bg=tema_atual["entry_bg"], fg=tema_atual["entry_fg"],
+                         insertbackground=tema_atual["fg"])
+        elif isinstance(widget, tk.Button):
+            if widget.cget("text") in ["Excluir Selecionado", "Excluir"]:
+                widget.config(bg="#f44336", fg="#ffffff", activebackground="#d32f2f")
+            else:
+                widget.config(bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"],
+                             activebackground=tema_atual["btn_hover"])
 
-    tk.Label(janela_login, text="Digite a senha-mestra", font=("Arial", 10)).pack(pady=10)
-    entrada = tk.Entry(janela_login, show="*", width=30)
-    entrada.pack()
-    tk.Button(janela_login, text="Entrar", command=verificar).pack(pady=10)
-
-# Função para mostrar os dados salvos
 def mostrar_dados_salvos():
     janela_dados = tk.Toplevel()
     janela_dados.title("Senhas Salvas")
-    janela_dados.iconbitmap('img\imagem.ico')
-    janela_dados.geometry("600x400")
+    janela_dados.geometry("700x500")
+    janela_dados.iconbitmap('icone.ico')
+    janela_dados.resizable(True, True)
     janelas_secundarias.append(janela_dados)
-
-    frame_busca = tk.Frame(janela_dados, bg=tema_atual["bg"])
-    frame_busca.pack(pady=5)
-
-    lbl_busca = tk.Label(frame_busca, text="Buscar Serviço:", bg=tema_atual["bg"], fg=tema_atual["fg"])
-    lbl_busca.pack(side='left', padx=5)
+    
+    # Frame principal
+    main_frame = tk.Frame(janela_dados, bg=tema_atual["bg"])
+    main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+    
+    # Frame de busca
+    frame_busca = tk.Frame(main_frame, bg=tema_atual["frame_bg"], pady=10, padx=10)
+    frame_busca.pack(fill="x", pady=(0, 10))
+    
+    lbl_busca = tk.Label(frame_busca, text="Buscar:", bg=tema_atual["frame_bg"], fg=tema_atual["fg"])
+    lbl_busca.pack(side="left", padx=(0, 10))
     
     entrada_busca = tk.Entry(frame_busca, width=40, bg=tema_atual["entry_bg"], fg=tema_atual["entry_fg"])
-    entrada_busca.pack(side='left', padx=5)
-
-    frame_senhas = tk.Frame(janela_dados, bg=tema_atual["bg"])
-    frame_senhas.pack(fill='both', expand=True, padx=10, pady=10)
-
-    # Função que carrega as senhas
-    def carregar_dados():
+    entrada_busca.pack(side="left", expand=True, fill="x", padx=(0, 10))
+    
+    # Treeview para mostrar os dados
+    frame_tree = tk.Frame(main_frame, bg=tema_atual["bg"])
+    frame_tree.pack(fill="both", expand=True)
+    
+    # Configurar estilo da Treeview conforme o tema
+    style = ttk.Style()
+    style.theme_use('default')
+    
+    if modo_escuro:
+        style.configure("Treeview",
+                      background=tema_atual["entry_bg"],
+                      foreground=tema_atual["fg"],
+                      fieldbackground=tema_atual["entry_bg"])
+        style.configure("Treeview.Heading",
+                      background=tema_atual["btn_bg"],
+                      foreground=tema_atual["btn_fg"])
+        style.map('Treeview', background=[('selected', tema_atual["highlight"])])
+    else:
+        style.configure("Treeview",
+                      background="white",
+                      foreground="black",
+                      fieldbackground="white")
+        style.configure("Treeview.Heading",
+                      background=tema_atual["btn_bg"],
+                      foreground=tema_atual["btn_fg"])
+    
+    scroll_y = ttk.Scrollbar(frame_tree)
+    scroll_y.pack(side="right", fill="y")
+    
+    colunas = ("Serviço", "Usuário", "Senha")
+    tree = ttk.Treeview(frame_tree, columns=colunas, show="headings", yscrollcommand=scroll_y.set,
+                       style="Treeview")
+    
+    for col in colunas:
+        tree.heading(col, text=col)
+        tree.column(col, width=200, anchor="w")
+    
+    tree.pack(fill="both", expand=True)
+    scroll_y.config(command=tree.yview)
+    
+    # Botões de ação
+    frame_botoes = tk.Frame(main_frame, bg=tema_atual["frame_bg"], pady=10)
+    frame_botoes.pack(fill="x", pady=(10, 0))
+    
+    btn_copiar = tk.Button(frame_botoes, text="Copiar Senha", bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"],
+                          activebackground=tema_atual["btn_hover"])
+    btn_copiar.pack(side="left", padx=5)
+    
+    btn_excluir = tk.Button(frame_botoes, text="Excluir Selecionado", bg="#f44336", fg="#ffffff",
+                           activebackground="#d32f2f")
+    btn_excluir.pack(side="left", padx=5)
+    
+    # Aplicar tema imediatamente
+    aplicar_tema_janela_dados(janela_dados)
+    
+    # Função para carregar dados na treeview
+    def carregar_dados(filtro=""):
+        tree.delete(*tree.get_children())
         dados = {}
         try:
             with open("dados_senhas.dat", "rb") as arq:
@@ -164,192 +287,221 @@ def mostrar_dados_salvos():
                     partes = decodificado.split(" | ")
                     if len(partes) == 3:
                         servico, usuario, senha = partes
-                        dados[servico] = {"usuario": usuario, "senha": senha}
+                        if filtro.lower() in servico.lower():
+                            tree.insert("", "end", values=(servico, usuario, "••••••••"))
                 except:
                     continue
         except FileNotFoundError:
             pass
-        return dados      
-
-    # Função que exibe os Usuários e Serviço
-    def exibir_dados(filtro=""):
-        for widget in frame_senhas.winfo_children():
-            widget.destroy()
+    
+    # Função para copiar senha
+    def copiar_senha():
+        selecionado = tree.focus()
+        if selecionado:
+            item = tree.item(selecionado)
+            servico, usuario, _ = item['values']
             
-        dados = carregar_dados()
-        filtro = filtro.lower()
-
-        if not dados:
-            lbl_vazio = tk.Label(frame_senhas, text="Nenhuma senha salva ainda.", 
-                               bg=tema_atual["bg"], fg=tema_atual["fg"])
-            lbl_vazio.pack(pady=20)
-            return
-
-        for servico, info in dados.items():
-            if filtro and filtro not in servico.lower():
-                continue
-
-            frame_linha = tk.Frame(frame_senhas, bg=tema_atual["bg"])
-            frame_linha.pack(pady=5, fill='x', padx=10)
-
-            texto = f"{servico} - {info['usuario']}"
-            lbl = tk.Label(frame_linha, text=texto, bg=tema_atual["bg"], 
-                          fg=tema_atual["fg"], anchor='w', width=40)
-            lbl.pack(side='left', padx=5)
-
-            btn_copiar = tk.Button(frame_linha, text="Copiar Senha", 
-                                 bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"],
-                                 activebackground=tema_atual["btn_hover"], 
-                                 command=lambda s=info['senha']: copiar_senha(s))
-            btn_copiar.pack(side='right', padx=5)
-
-            btn_excluir = tk.Button(frame_linha, text="Excluir", 
-                                  bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"],
-                                  activebackground=tema_atual["btn_hover"], 
-                                  command=lambda s=servico: excluir_entrada(s))
-            btn_excluir.pack(side='right')
-
-    # Função que copía a senha e cola na área de trabalho
-    def copiar_senha(senha):
-        janela_dados.clipboard_clear()
-        janela_dados.clipboard_append(senha)
-        messagebox.showinfo("Copiado", "Senha copiada para a área de transferência!")
-
-    # Função que exclui os dados salvos
-    def excluir_entrada(servico):
-        confirm = messagebox.askyesno("Confirmação", f"Tem certeza que deseja excluir a entrada para {servico}?")
-        if confirm:
             try:
                 with open("dados_senhas.dat", "rb") as arq:
                     linhas = arq.readlines()
-
-                chave = carregar_chave()
-                f = Fernet(chave)
-
-                novas_linhas = []
+                    chave = carregar_chave()
+                    f = Fernet(chave)
                 for linha in linhas:
                     try:
                         decodificado = f.decrypt(linha.strip()).decode()
-                        if not decodificado.startswith(servico + " | "):
-                            novas_linhas.append(linha)
+                        partes = decodificado.split(" | ")
+                        if len(partes) == 3 and partes[0] == servico and partes[1] == usuario:
+                            janela_dados.clipboard_clear()
+                            janela_dados.clipboard_append(partes[2])
+                            messagebox.showinfo("Copiado", "Senha copiada para a área de transferência!")
+                            return
                     except:
                         continue
+            except FileNotFoundError:
+                pass
+    
+    # Função para excluir entrada
+    def excluir_entrada():
+        selecionado = tree.focus()
+        if selecionado:
+            item = tree.item(selecionado)
+            servico, usuario, _ = item['values']
+            
+            confirm = messagebox.askyesno("Confirmação", f"Tem certeza que deseja excluir a entrada para {servico}?")
+            if confirm:
+                try:
+                    with open("dados_senhas.dat", "rb") as arq:
+                        linhas = arq.readlines()
 
-                with open("dados_senhas.dat", "wb") as arq:
-                    arq.writelines(novas_linhas)
+                    chave = carregar_chave()
+                    f = Fernet(chave)
 
-                exibir_dados(entrada_busca.get())
-            except Exception as e:
-                messagebox.showerror("Erro", f"Erro ao excluir: {e}")
+                    novas_linhas = []
+                    for linha in linhas:
+                        try:
+                            decodificado = f.decrypt(linha.strip()).decode()
+                            partes = decodificado.split(" | ")
+                            if len(partes) == 3 and not (partes[0] == servico and partes[1] == usuario):
+                                novas_linhas.append(linha)
+                        except:
+                            continue
 
-    entrada_busca.bind("<KeyRelease>", lambda e: exibir_dados(entrada_busca.get()))
-    exibir_dados()
+                    with open("dados_senhas.dat", "wb") as arq:
+                        arq.writelines(novas_linhas)
 
-# Função que gera a senha de até 12 digitos
+                    carregar_dados(entrada_busca.get())
+                except Exception as e:
+                    messagebox.showerror("Erro", f"Erro ao excluir: {e}")
+    
+    # Configurar eventos
+    entrada_busca.bind("<KeyRelease>", lambda e: carregar_dados(entrada_busca.get()))
+    btn_copiar.config(command=copiar_senha)
+    btn_excluir.config(command=excluir_entrada)
+    
+    # Carregar dados iniciais
+    carregar_dados()
+    
+    aplicar_tema()
+
 def gerar_senha(tamanho=12):
     caracteres = string.ascii_letters + string.digits + string.punctuation
     senha = ''.join(random.choice(caracteres) for _ in range(tamanho))
     return senha
 
-# Função que atualisa as senha
 def atualizar_senha():
     nova = gerar_senha()
     campo_senha.delete(0, tk.END)
     campo_senha.insert(0, nova)
 
-# Altera entre o modo claro/escuro
 def alternar_tema():
     global tema_atual, modo_escuro
     modo_escuro = not modo_escuro
     tema_atual = tema_escuro if modo_escuro else tema_claro
     aplicar_tema()
 
-    novo_icone = icone_lua if modo_escuro else icone_sol
-    botao_tema.config(image=novo_icone, bg='white' if not modo_escuro else '#2e2e2e',
-                      activebackground='white' if not modo_escuro else '#2e2e2e')
-    botao_tema.image = novo_icone
-
-# Função que aplica o tema nas janelas principais e secundarias 
 def aplicar_tema():
-    # Aplica tema na janela principal
-    janela.configure(bg=tema_atual["bg"])
+    # Aplicar tema na janela principal
+    janela.config(bg=tema_atual["bg"])
+    frame_principal.config(bg=tema_atual["bg"])
+    
     for widget in widgets_estilizados:
         if isinstance(widget, tk.Entry):
-            widget.configure(bg=tema_atual["entry_bg"], fg=tema_atual["entry_fg"])
+            widget.config(bg=tema_atual["entry_bg"], fg=tema_atual["entry_fg"],
+                         insertbackground=tema_atual["fg"])
         elif isinstance(widget, tk.Label):
-            widget.configure(bg=tema_atual["bg"], fg=tema_atual["fg"])
+            widget.config(bg=tema_atual["bg"], fg=tema_atual["fg"])
         elif isinstance(widget, tk.Button):
-            widget.configure(bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"],
-                             activebackground=tema_atual["btn_hover"])
-
-    # Aplica tema em cada janela secundária
+            widget.config(bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"],
+                         activebackground=tema_atual["btn_hover"])
+    
+    # Aplicar tema nas janelas secundárias
     for janela_sec in janelas_secundarias:
         try:
-            janela_sec.configure(bg=tema_atual["bg"])
             for widget in janela_sec.winfo_children():
-                if isinstance(widget, tk.Entry):
-                    widget.configure(bg=tema_atual["entry_bg"], fg=tema_atual["entry_fg"])
-                elif isinstance(widget, tk.Label):
-                    widget.configure(bg=tema_atual["bg"], fg=tema_atual["fg"])
-                elif isinstance(widget, tk.Button):
-                    widget.configure(bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"], activebackground=tema_atual["btn_hover"])
+                if isinstance(widget, tk.Frame):
+                    widget.config(bg=tema_atual["frame_bg"])
+                aplicar_tema_janela(widget)
         except:
-            pass  # Evita erro se a janela foi fechada
+            continue
 
+def aplicar_tema_janela(widget):
+    if isinstance(widget, tk.Frame):
+        widget.config(bg=tema_atual["frame_bg"])
+        for child in widget.winfo_children():
+            aplicar_tema_janela(child)
+    elif isinstance(widget, tk.Label):
+        widget.config(bg=tema_atual["frame_bg"] if widget.master.winfo_class() == "Frame" else tema_atual["bg"], 
+                      fg=tema_atual["fg"])
+    elif isinstance(widget, tk.Entry):
+        widget.config(bg=tema_atual["entry_bg"], fg=tema_atual["entry_fg"],
+                     insertbackground=tema_atual["fg"])
+    elif isinstance(widget, tk.Button):
+        if widget.cget("bg") == "#f44336":  # Mantém cor do botão excluir
+            widget.config(fg="#ffffff", activebackground="#d32f2f")
+        else:
+            widget.config(bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"],
+                         activebackground=tema_atual["btn_hover"])
+
+# ============ Interface Principal ============
 gerar_chave()
 
 janela = tk.Tk()
-janela.title("Gerenciador de Senhas")
-janela.geometry("450x300")
-janela.iconbitmap('img\imagem.ico')
+janela.title("Gerenciador de Senhas Seguro")
+janela.geometry("500x450")
+janela.iconbitmap('icone.ico')
 janela.resizable(False, False)
 
-label1 = tk.Label(janela, text="Serviço:", font=("Arial", 10))
-label1.pack(pady=2)
-entrada_servico = tk.Entry(janela, width=40, font=("Arial", 11))
-entrada_servico.pack()
+# Frame principal
+frame_principal = tk.Frame(janela, bg=tema_atual["bg"], padx=20, pady=20)
+frame_principal.pack(fill="both", expand=True)
 
-label2 = tk.Label(janela, text="Usuário:", font=("Arial", 10))
-label2.pack(pady=2)
-entrada_usuario = tk.Entry(janela, width=40, font=("Arial", 11))
-entrada_usuario.pack()
+# Título
+tk.Label(frame_principal, text="Gerenciador de Senhas", font=("Arial", 16, "bold"), 
+         bg=tema_atual["bg"], fg=tema_atual["highlight"]).pack(pady=(0, 20))
 
-label3 = tk.Label(janela, text="Senha:", font=("Arial", 10))
-label3.pack(pady=2)
-campo_senha = tk.Entry(janela, width=40, font=("Arial", 11))
-campo_senha.pack()
+# Frame de formulário
+frame_form = tk.Frame(frame_principal, bg=tema_atual["bg"], padx=10, pady=10)
+frame_form.pack(fill="x", pady=5)
 
-btn_gerar = tk.Button(janela, text="Gerar Senha", command=atualizar_senha)
-btn_gerar.pack(pady=5)
+frame_form.columnconfigure(1, weight=1)
 
-btn_salvar = tk.Button(janela, text="Salvar Senha", command=lambda: salvar_dados(entrada_servico.get(), entrada_usuario.get(), campo_senha.get()))
+tk.Label(frame_form, text="Serviço:", font=("Arial", 10), 
+         bg=tema_atual["bg"], fg=tema_atual["fg"]).grid(row=0, column=0, sticky="w", pady=(0, 5))
+entrada_servico = tk.Entry(frame_form, font=("Arial", 11), 
+                          bg=tema_atual["entry_bg"], fg=tema_atual["entry_fg"])
+entrada_servico.grid(row=0, column=1, sticky="ew", pady=(0, 5), padx=(5, 0))
+
+# Usuário/E-mail
+tk.Label(frame_form, text="Usuário/E-mail:", font=("Arial", 10), 
+         bg=tema_atual["bg"], fg=tema_atual["fg"]).grid(row=1, column=0, sticky="w", pady=(0, 5))
+entrada_usuario = tk.Entry(frame_form, font=("Arial", 11), 
+                          bg=tema_atual["entry_bg"], fg=tema_atual["entry_fg"])
+entrada_usuario.grid(row=1, column=1, sticky="ew", pady=(0, 5), padx=(5, 0))
+
+# Senha
+tk.Label(frame_form, text="Senha:", font=("Arial", 10), 
+         bg=tema_atual["bg"], fg=tema_atual["fg"]).grid(row=2, column=0, sticky="w", pady=(0, 5))
+
+frame_senha = tk.Frame(frame_form, bg=tema_atual["bg"])
+frame_senha.grid(row=2, column=1, sticky="ew", pady=(0, 5), padx=(5, 0))
+
+campo_senha = tk.Entry(frame_senha, font=("Arial", 11), 
+                      bg=tema_atual["entry_bg"], fg=tema_atual["entry_fg"])
+campo_senha.pack(side="left", fill="x", expand=True)
+
+btn_gerar = tk.Button(frame_senha, text="Gerar", command=atualizar_senha, width=8,
+                     bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"],
+                     activebackground=tema_atual["btn_hover"])
+btn_gerar.pack(side="right", padx=(5, 0))
+
+# Configure o grid para expandir corretamente
+frame_form.grid_rowconfigure(0, weight=1)
+frame_form.grid_rowconfigure(1, weight=1)
+frame_form.grid_rowconfigure(2, weight=1)
+
+# Frame de botões
+frame_botoes = tk.Frame(frame_principal, bg=tema_atual["bg"], pady=20)
+frame_botoes.pack(fill="x")
+
+btn_salvar = tk.Button(frame_botoes, text="Salvar Senha", command=salvar_dados, width=15,
+                      bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"],
+                      activebackground=tema_atual["btn_hover"])
 btn_salvar.pack(pady=5)
 
-btn_admin = tk.Button(janela, text="Modo Administrador", command=autenticador_admin)
+btn_admin = tk.Button(frame_botoes, text="Modo Administrador", command=autenticador_admin, width=20,
+                     bg="#FF9800", fg="#ffffff", activebackground="#F57C00")
 btn_admin.pack(pady=5)
 
-#btn_definir = tk.Button(janela, text="Definir Senha-Mestra", command=definir_senha_master)
-#btn_definir.pack(pady=5)
+# Botão de tema
+btn_tema = tk.Button(frame_principal, text="Alternar Tema", command=alternar_tema, width=15,
+                    bg=tema_atual["btn_bg"], fg=tema_atual["btn_fg"],
+                    activebackground=tema_atual["btn_hover"])
+btn_tema.pack(pady=(20, 0))
 
-# Ícones e botão de alternância de tema
-modo_escuro = True
-
-icone_sol_pil = Image.open("img\imagem_sol.jpg").resize((32, 32))
-icone_sol = ImageTk.PhotoImage(icone_sol_pil)
-
-icone_lua_pil = Image.open("img\imagem_lua.jpg").resize((32, 32))
-icone_lua = ImageTk.PhotoImage(icone_lua_pil)
-icone_atual = icone_sol if not modo_escuro else icone_lua
-
-botao_tema = tk.Button(janela, image=icone_lua, command=alternar_tema, bg="#2e2e2e", activebackground="#2e2e2e")
-botao_tema.place(x=410, y=5)
-botao_tema.image = icone_lua
-
-# Armazena widgets para estilização
+# Armazenar widgets para estilização
 widgets_estilizados.extend([
-    label1, entrada_servico, label2, entrada_usuario,
-    label3, campo_senha, btn_gerar, btn_salvar,
-    btn_admin, #btn_definir
+    entrada_servico, entrada_usuario, campo_senha, 
+    btn_gerar, btn_salvar, btn_admin, btn_tema
 ])
 
 aplicar_tema()
