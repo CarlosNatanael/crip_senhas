@@ -1,6 +1,6 @@
 # 🔐 SecurePass Manager - Gerenciador de Senhas
 
-![Python Version](https://img.shields.io/badge/python-3.13+-blue.svg)
+![image](https://github.com/user-attachments/assets/6118bd72-a7b1-4127-9ec6-a4b11a7f1500)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 Um aplicativo seguro e intuitivo para gerenciamento de credenciais, desenvolvido em Python com interface Tkinter.
